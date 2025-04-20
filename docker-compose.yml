@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: cli-chat-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: cli_chat
+      MYSQL_USER: chatuser
+      MYSQL_PASSWORD: chatpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - cli-chat-network
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Redis for caching and real-time features
+  redis:
+    image: redis:7.0
+    container_name: cli-chat-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cli-chat-network
+
+  # Chat Server
+  chat-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: cli-chat-server
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=chatuser
+      - MYSQL_PASSWORD=chatpassword
+      - MYSQL_DATABASE=cli_chat
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVER_PORT=8000
+    ports:
+      - "8000:8000"
+    networks:
+      - cli-chat-network
+
+networks:
+  cli-chat-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:
